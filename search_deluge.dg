@@ -1,0 +1,77 @@
+query_list = ifnull(query.toList(),List());
+// query_list = [{"QueryAPI":"Price","QueryString":[390000,1812029]},{"QueryAPI":"Area","QueryString":["COSTA BLANCA NORTH","- Adsubia", "- Javea"]},{"QueryAPI":"Type_of_Property","QueryString":["Apartment","Bungalow"]},{"QueryAPI":"Internal_Reference","QueryString":["NCB"]}];
+// query_list = {{"QueryAPI":"Internal_Reference","QueryString":{"vlc"}}};
+query_array = list();
+query_str = "";
+for each  query in query_list
+{
+	indv_query = "";
+	QueryString_array = query.get("QueryString");
+	if(query.get("QueryAPI") == "Price")
+	{
+		if(QueryString_array != null && QueryString_array.get(0) != null && QueryString_array.get(1) != null)
+		{
+			indv_query = "Price:between:" + QueryString_array.get(0) + "," + QueryString_array.get(1);
+		}
+	}
+	else if(query.get("QueryAPI") == "Area")
+	{
+		if(!QueryString_array.isEmpty())
+		{
+			indv_query = "Area:in:" + QueryString_array;
+		}
+	}
+	else if(query.get("QueryAPI") == "Type_of_Property")
+	{
+		if(!QueryString_array.isEmpty())
+		{
+			indv_query = "Type_of_Property:in:" + QueryString_array;
+		}
+	}
+	else if(query.get("QueryAPI") == "Internal_Reference")
+	{
+		if(!QueryString_array.isEmpty() && QueryString_array.get(0) != null && QueryString_array.get(0) != "")
+		{
+			indv_query = "Internal_Reference:equals:*" + QueryString_array.get(0) + "*";
+		}
+	}
+	if(indv_query != "")
+	{
+		if(query_str == "")
+		{
+			query_str = "(" + indv_query + ")";
+		}
+		else
+		{
+			query_str = "(" + query_str + "and(" + indv_query + "))";
+		}
+	}
+}
+info query_str;
+sendmail
+[
+	from :zoho.loginuserid
+	to :"towmiralrashid@gmail.com"
+	subject :"Query String " + query
+	message :query_str
+]
+// query_str = "((((Price:between:389999,1812029)and(Area:in:COSTA BLANCA NORTH,- Adsubia,- Javea))and(Type_of_Property:in:Apartment,Bungalow))and(Internal_Reference:equals:*NCB*))";
+Product_search = invokeurl
+[
+	url :"https://www.zohoapis.eu/crm/v6/Products/search?criteria=" + query_str
+	type :GET
+	connection:"zoho_crm_conn_used_in_widget_do_not_delete"
+];
+info Product_search.get("data").size();
+return_array = List();
+if(Product_search != null && Product_search.get("data") != null && !Product_search.get("data").isEmpty())
+{
+	return_array = Product_search.get("data");
+}
+// return "[" + return_array + "]";
+// info timesheet_list;
+response = Map();
+body = {"data":return_array};
+response.put("Content-Type","application/json");
+response.put("body",body);
+return {"crmAPIResponse":response};
